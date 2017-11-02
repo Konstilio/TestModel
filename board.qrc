@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/Quick">
+        <file>main.qml</file>
+        <file>TreeDelegate.qml</file>
+        <file>Lane.qml</file>
+        <file>ColumnItem.qml</file>
+        <file>Card.qml</file>
+        <file>Style.qml</file>
+        <file>qmldir</file>
+    </qresource>
+</RCC>
