@@ -64,10 +64,10 @@ public:
 
 protected:
 
+        BoardModelItem *mp_pParent;
     TypeClass::EType mp_Type;
     CPMC_LocalID mp_ID;
     QString mp_Title;
-    BoardModelItem *mp_pParent;
     vector<unique_ptr<BoardModelItem>> mp_Children;
 };
 

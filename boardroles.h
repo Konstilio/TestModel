@@ -7,8 +7,7 @@ enum ERole
     , ERole_Title
     , ERole_Color
     , ERole_Identifier
-    , ERole_Column
-    , ERole_Card
+    , ERole_ProxyModel
 };
 
 #endif // BOARDROLES_H

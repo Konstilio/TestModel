@@ -1,16 +1,47 @@
 #include "lanemodel.h"
 #include "columnsmodel.h"
+#include "boardproxymodel.h"
 
 LaneModel::LaneModel(QObject* _pParent)
-    : QAbstractListModel(_pParent)
+    : QAbstractItemModel(_pParent)
     , mp_bInReset(false)
 {
-    mp_pRoot = make_unique<BoardModelItem>(TypeClass::EType_Board, 0, "Board");
+    mp_pRoot = NHelp::make_unique<BoardModelItem>(TypeClass::EType_Board, 0, "Board");
 }
 
 LaneModel::~LaneModel()
 {
 
+}
+
+QModelIndex LaneModel::index(int _Row, int _Column, const QModelIndex &_Parent) const
+{
+   //if (!hasIndex(_Row, _Column, _Parent))
+        //return QModelIndex();
+
+   BoardModelItem *pParentItem = nullptr;
+   if (!_Parent.isValid())
+       pParentItem = mp_pRoot.get();
+   else
+       pParentItem = static_cast<BoardModelItem*>(_Parent.internalPointer());
+
+   BoardModelItem *pChildItem = pParentItem->f_GetChildren()[_Row].get();
+   Q_ASSERT(pChildItem);
+   return createIndex(_Row, _Column, pChildItem);
+}
+
+QModelIndex LaneModel::parent(const QModelIndex &_Index) const
+{
+    if (!_Index.isValid())
+        return QModelIndex();
+
+   BoardModelItem *pItem = static_cast<BoardModelItem*>(_Index.internalPointer());
+   BoardModelItem *pParentItem = pItem->parent();
+
+   if (pParentItem == mp_pRoot.get())
+       return QModelIndex();
+
+   return createIndex(pParentItem->rowInParent(), 0, pParentItem);
 }
 
 int LaneModel::rowCount(QModelIndex const& _Parent) const
@@ -21,14 +52,20 @@ int LaneModel::rowCount(QModelIndex const& _Parent) const
     return mp_pRoot->childCount();
 }
 
-QVariant LaneModel::data(QModelIndex const& _Index, int _Role) const
+int LaneModel::columnCount(const QModelIndex &_Parent) const
+{
+    Q_UNUSED(_Parent);
+    return 1;
+}
+
+QVariant LaneModel::data(QModelIndex const &_Index, int _Role) const
 {
     if (!_Index.isValid())
         return QVariant();
 
-    BoardModelItem* pItem = mp_pRoot->f_GetChildren()[_Index.row()].get();
+    BoardModelItem *pItem = static_cast<BoardModelItem *>(_Index.internalPointer());
     Q_ASSERT(pItem != Q_NULLPTR);
-    Q_ASSERT(pItem->type() == TypeClass::EType_Lane);
+
 
     switch (_Role)
     {
@@ -40,14 +77,32 @@ QVariant LaneModel::data(QModelIndex const& _Index, int _Role) const
             return pItem->color();
         case ERole_Identifier:
             return pItem->identifier();
-        case ERole_Column:
+//        case ERole_Column:
+//            {
+//                auto *pColumnsModel = mp_ProxyModelsCache[pItem->identifier()];
+//                return QVariant::fromValue(pColumnsModel);
+//            }
+        case ERole_ProxyModel:
             {
-                auto *pColumnsModel = mp_ColumnModelsCache[pItem->identifier()];
-                return QVariant::fromValue(pColumnsModel);
+                 Q_ASSERT(pItem->type() == TypeClass::EType_Lane || pItem->type() == TypeClass::EType_Column);
+                auto *pProxyModel = mp_ProxyModelsCache[pItem->identifier()];
+                Q_ASSERT(pProxyModel);
+                return QVariant::fromValue(pProxyModel);
             }
         default:
             return QVariant();
     }
+}
+
+QModelIndex LaneModel::fr_GetIndexForItem(BoardModelItem *_pItem) const
+{
+    if (_pItem == mp_pRoot.get())
+        return QModelIndex();
+
+    Q_ASSERT(_pItem->parent());
+    QModelIndex Parent = fr_GetIndexForItem(_pItem->parent());
+
+    return index(_pItem->rowInParent(), 0, Parent);
 }
 
 QHash<int, QByteArray> LaneModel::roleNames() const
@@ -57,7 +112,7 @@ QHash<int, QByteArray> LaneModel::roleNames() const
     Result[ERole_Title] = "title";
     Result[ERole_Color] = "color";
     Result[ERole_Identifier] = "identifier";
-    Result[ERole_Column] = "columnsModel";
+    Result[ERole_ProxyModel] = "proxyModel";
     return Result;
 }
 
@@ -70,7 +125,7 @@ int LaneModel::visualWidth() const
     return Width;
 }
 
-void LaneModel::appendLane()
+void LaneModel::append()
 {
     if (mp_pRoot->childCount() > 0)
     {
@@ -190,6 +245,9 @@ void LaneModel::f_CardAdded(CPMC_LocalID const &_LocalLaneID, CPMC_LocalID const
 
     unique_ptr<BoardModelItem> pNewCard = unique_ptr<BoardModelItem>(fp_CreateCard(_LocalCardID, pColumn));
     fp_AddCard(pColumn->parent()->rowInParent(), pColumn->rowInParent(), pPrevItem ? pPrevItem->rowInParent() + 1 : static_cast<int>(pColumn->f_GetChildren().size()), std::move(pNewCard));
+
+    Q_ASSERT(mp_ProxyModelsCache.count(pLaneItem->identifier()) == 1);
+    emit mp_ProxyModelsCache[pLaneItem->identifier()]->visualHeightChanged();
 }
 
 void LaneModel::f_CardDeleted(CPMC_LocalID const &_LocalTaskID)
@@ -266,9 +324,8 @@ void LaneModel::f_LaneDeleted(CPMC_LocalID const &_LocalLaneID)
     Q_ASSERT(pBoard == mp_pRoot.get());
 
     beginRemoveRows(QModelIndex(), SourceLaneIndex.row(), SourceLaneIndex.row());
-    auto *pColumnsModel = mp_ColumnModelsCache[pSourceLane->identifier()];
-    pColumnsModel->deleteLater();
-    mp_ColumnModelsCache.remove(pSourceLane->identifier());
+    mp_ProxyModelsCache[pSourceLane->identifier()]->deleteLater();
+    mp_ProxyModelsCache.remove(pSourceLane->identifier());
 
     mp_ItemLookupCache.remove(pSourceLane->identifier());
     pBoard->removeChild(pSourceLane->rowInParent());
@@ -295,6 +352,9 @@ void LaneModel::f_ColumnAdded(CPMC_LocalID const &_ParentLaneID, CPMC_LocalID co
     fp_AddColumn(pLaneItem->rowInParent(), pPrevItem ? pPrevItem->rowInParent() + 1 : 0, std::move(pNewColumn));
 
     emit visualWidthChanged();
+
+    Q_ASSERT(mp_ProxyModelsCache.contains(pLaneItem->identifier()));
+    emit mp_ProxyModelsCache[pLaneItem->identifier()]->visualHeightChanged();
 }
 
 void LaneModel::f_ColumnMoved(CPMC_LocalID const &_ParentLaneID, CPMC_LocalID const &_LocalColumnID, CPMC_LocalID const &_LocalPreviousColumnID)
@@ -348,7 +408,8 @@ void LaneModel::f_ColumnDeleted(CPMC_LocalID const &_ParentLaneID, CPMC_LocalID 
     QModelIndex SourceColumnIndex = index(pSourceColumn->rowInParent(), 0, ParentLaneIndex);
 
     beginRemoveRows(ParentLaneIndex, SourceColumnIndex.row(), SourceColumnIndex.row());
-    mp_ColumnModelsCache[pParentLane->identifier()]->f_OnColumnRemoved(pSourceColumn);
+    mp_ProxyModelsCache[pSourceColumn->identifier()]->deleteLater();
+    mp_ProxyModelsCache.remove(pSourceColumn->identifier());
     mp_ItemLookupCache.remove(pSourceColumn->identifier());
     pParentLane->removeChild(pSourceColumn->rowInParent());
     endRemoveRows();
@@ -430,9 +491,14 @@ void LaneModel::fp_AddColumn(int _Lane, int _iIndex, unique_ptr<BoardModelItem>&
 {
     BoardModelItem* pLaneItem = mp_pRoot->child(_Lane);
 
-    mp_ItemLookupCache[_pColumnItem->identifier()] = _pColumnItem.get();
-    mp_ColumnModelsCache[pLaneItem->identifier()]->f_OnColumnAdded(std::move(_pColumnItem), _iIndex);
+    QModelIndex LaneIndex = index(pLaneItem->rowInParent(), 0, QModelIndex());
+    beginInsertRows(LaneIndex, _iIndex, _iIndex);
 
+    mp_ItemLookupCache[_pColumnItem->identifier()] = _pColumnItem.get();
+    fp_RegisterProxyModel(_pColumnItem.get());
+    pLaneItem->insertChild(_iIndex, std::move(_pColumnItem));
+
+    endInsertRows();
 }
 
 void LaneModel::fp_AddLane(int _iIndex, unique_ptr<BoardModelItem>&& _pLaneItem)
@@ -441,8 +507,7 @@ void LaneModel::fp_AddLane(int _iIndex, unique_ptr<BoardModelItem>&& _pLaneItem)
         beginInsertRows(QModelIndex(), _iIndex, _iIndex);
 
     mp_ItemLookupCache[_pLaneItem->identifier()] = _pLaneItem.get();
-    ColumnsModel *pModel = new ColumnsModel(_pLaneItem.get(), this);
-    mp_ColumnModelsCache[_pLaneItem->identifier()] = pModel;
+    fp_RegisterProxyModel(_pLaneItem.get());
     mp_pRoot->insertChild(_iIndex, std::move(_pLaneItem));
 
     if (!mp_bInReset)
@@ -467,6 +532,16 @@ void LaneModel::fp_RemoveCard(BoardModelItem *_pCardItem)
     endRemoveRows();
 }
 
+void LaneModel::fp_RegisterProxyModel(BoardModelItem *_pItem)
+{
+    Q_ASSERT(_pItem->type() == TypeClass::EType_Lane || _pItem->type() == TypeClass::EType_Column);
+
+    BoardProxyModel *pProxyModel = new BoardProxyModel(_pItem, this);
+    pProxyModel->setSourceModel(this);
+    mp_ProxyModelsCache[_pItem->identifier()] = pProxyModel;
+    connect(this, &LaneModel::rowsInserted, pProxyModel, &BoardProxyModel::onSourceRowsInserted);
+}
+
 BoardModelItem *LaneModel::fp_GetColumnInLane(CPMC_LocalID const &_LocalLaneID, CPMC_LocalID const &_LocalColumnID) const
 {
     BoardModelItem* pLaneItem = f_GetModelItemForID(_LocalLaneID);
@@ -488,7 +563,7 @@ BoardModelItem *LaneModel::fp_GetColumnInLane(CPMC_LocalID const &_LocalLaneID, 
 
 void LaneModel::fp_ResetCache()
 {
-    mp_pRoot = make_unique<BoardModelItem>(TypeClass::EType_Board, 0, "Board");
+    mp_pRoot = NHelp::make_unique<BoardModelItem>(TypeClass::EType_Board, 0, "Board");
     mp_ItemLookupCache.clear();
 }
 

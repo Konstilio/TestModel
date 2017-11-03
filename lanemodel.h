@@ -2,7 +2,7 @@
 #define BOARDMODEL_H
 
 #include <memory>
-#include <QAbstractListModel>
+#include <QAbstractItemModel>
 #include <QString>
 #include "boardmodelitem.h"
 #include "boardroles.h"
@@ -10,7 +10,8 @@
 using namespace std;
 
 class ColumnsModel;
-class LaneModel : public QAbstractListModel
+class BoardProxyModel;
+class LaneModel : public QAbstractItemModel
 {
     Q_OBJECT
     Q_PROPERTY(int visualWidth READ visualWidth NOTIFY visualWidthChanged)
@@ -22,11 +23,16 @@ public:
 
     static QString fs_Format();
 
+    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
+    QModelIndex parent(const QModelIndex &_Index) const override;
     int rowCount(QModelIndex const& _Parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex &_Parent = QModelIndex()) const override;
     QVariant data(QModelIndex const& _Index, int _Role = Qt::DisplayRole) const override;
 
+    QModelIndex fr_GetIndexForItem(BoardModelItem *_pItem) const;
+
     QHash<int, QByteArray> roleNames() const override;
-    Q_INVOKABLE void appendLane();
+    Q_INVOKABLE void append();
     Q_INVOKABLE void appendColumn(int _iParentLaneRow);
 
     int visualWidth() const;
@@ -62,12 +68,13 @@ protected:
     void fp_AddLane(int _iIndex, unique_ptr<BoardModelItem>&& _pLaneItem);
 
     void fp_RemoveCard(BoardModelItem* _pCardItem);
+    void fp_RegisterProxyModel(BoardModelItem *_pItem);
 
     void fp_ResetCache();
 
     unique_ptr<BoardModelItem> mp_pRoot;
     QHash<CPMC_LocalID, BoardModelItem*> mp_ItemLookupCache;
-    QHash<CPMC_LocalID, ColumnsModel*> mp_ColumnModelsCache;
+    QHash<CPMC_LocalID, BoardProxyModel*> mp_ProxyModelsCache;
     bool mp_bInReset;
 };
 

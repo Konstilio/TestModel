@@ -31,10 +31,10 @@ int BoardModelItem::childCount() const
 
 int BoardModelItem::rowForChild(BoardModelItem const* _pChild) const
 {
-    for (int i = 0; i < mp_Children.size(); ++i)
+    for (size_t i = 0; i < mp_Children.size(); ++i)
     {
         if (mp_Children[i].get() == _pChild)
-            return i;
+            return static_cast<int>(i);
     }
     return -1;
 }
@@ -61,9 +61,9 @@ void BoardModelItem::addChild(unique_ptr<BoardModelItem>&& _pChild)
 
 void BoardModelItem::insertChild(int _iIndex, unique_ptr<BoardModelItem>&& _pChild)
 {
-    _pChild->setParent(this);
+    //_pChild->setParent(this);
 
-    if (_iIndex >= mp_Children.size())
+    if (_iIndex >= static_cast<int>(mp_Children.size()))
     {
         mp_Children.push_back(std::move(_pChild));
     }

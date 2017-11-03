@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import QtGraphicalEffects 1.0
 import QtQuick.Controls 1.4
+import "."
 
 Item {
     id: _column
@@ -21,18 +22,26 @@ Item {
         color:"yellow"
         border.color: "black"
         border.width: 1
-        Rectangle {
+        Text {
             id: _columnName
-            Text
-            {
-                anchors.fill: parent
-                text: indexTitle
-            }
+            text: indexTitle
             anchors.top: parent.top
             height: _columnRect.height > 10 ? Style.nameOffset : 0 // What ???
             visible: height > 0
             color: "blue"
         }
+        Button {
+            id: _addCard
+            anchors{
+                top: _columnName.top
+            }
+            height: Style.nameOffset
+            x: _columnName.x + _columnName.paintedWidth
+            onClicked: {
+                _column.model.append()
+            }
+        }
+
         ListView
         {
             id: _cardsList

@@ -1,11 +1,10 @@
 import QtQuick 2.0
 import QtGraphicalEffects 1.0
-import QtQuick.Controls 2.2
+import QtQuick.Controls 1.4
 import "."
 
 Item {
     id: _lane
-    property var mainModel
     property var model
     property var indexTitle
     property var modelIndex // index of lane in main model
@@ -43,12 +42,10 @@ Item {
             state: "expanded"
             delegate: ColumnItem {
                 indexTitle: title
-                model: cardsModel
+                model: proxyModel
                 width: Style.cardWidth
                 height: _columnsList.height
             }
-
-
 
         }
         Button {
@@ -60,9 +57,7 @@ Item {
             height: Style.nameOffset
             width: Style.addButtonWidth
             onClicked: {
-                console.log(_lane.modelIndex)
-                _lane.mainModel.appendColumn(_lane.modelIndex)
-                console.log(_lane.model.rowCount())
+                _lane.model.append()
             }
         }
 

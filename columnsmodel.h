@@ -21,7 +21,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
     int visualHeight() const;
 
-    void f_OnColumnAdded(unique_ptr<BoardModelItem> &&_pItem, int _iIndex);
+    void f_OnColumnAdded(BoardModelItem* _pItem);
     void f_OnColumnRemoved(BoardModelItem *_pItem);
 
 signals:

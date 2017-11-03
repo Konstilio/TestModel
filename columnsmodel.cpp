@@ -36,11 +36,11 @@ QVariant ColumnsModel::data(const QModelIndex &_iIndex, int _Role) const
             return pItem->color();
         case ERole_Identifier:
             return pItem->identifier();
-        case ERole_Card:
-            {
-                auto *pCardsModel = mp_CardsModelsCache[pItem->identifier()];
-                return QVariant::fromValue(pCardsModel);
-            }
+//        case ERole_Card:
+//            {
+//                auto *pCardsModel = mp_CardsModelsCache[pItem->identifier()];
+//                return QVariant::fromValue(pCardsModel);
+//            }
         default:
             return QVariant();
     }
@@ -53,7 +53,6 @@ QHash<int, QByteArray> ColumnsModel::roleNames() const
     Result[ERole_Title] = "title";
     Result[ERole_Color] = "color";
     Result[ERole_Identifier] = "identifier";
-    Result[ERole_Card] = "cardsModel";
     return Result;
 }
 
@@ -66,17 +65,12 @@ int ColumnsModel::visualHeight() const
     return Height;
 }
 
-void ColumnsModel::f_OnColumnAdded(unique_ptr<BoardModelItem> &&_pItem, int _iIndex)
+void ColumnsModel::f_OnColumnAdded(BoardModelItem *_pItem)
 {
     Q_ASSERT(_pItem->type() == TypeClass::EType_Column);
 
-    beginInsertRows(QModelIndex(), _iIndex, _iIndex);
-
-    CardsModel *pModel = new CardsModel(_pItem.get(), this);
+    CardsModel *pModel = new CardsModel(_pItem, this);
     mp_CardsModelsCache[_pItem->identifier()] = pModel;
-    mp_pRoot->insertChild(_iIndex, std::move(_pItem));
-
-    endInsertRows();
 
     emit visualHeightChanged();
 }

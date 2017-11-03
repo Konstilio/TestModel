@@ -9,6 +9,7 @@ QT       += quick
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
+CONFIG += c++11
 TARGET = TestModel
 TEMPLATE = app
 
@@ -29,7 +30,8 @@ SOURCES += \
     boardmodelitem.cpp \
     columnsmodel.cpp \
     cardsmodel.cpp \
-    lanemodel.cpp
+    lanemodel.cpp \
+    boardproxymodel.cpp
 
 HEADERS += \
     boardmodelitem.h \
@@ -37,7 +39,8 @@ HEADERS += \
     cardsmodel.h \
     lanemodel.h \
     boardroles.h \
-    localidgenerator.h
+    localidgenerator.h \
+    boardproxymodel.h
 
 FORMS +=
 

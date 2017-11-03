@@ -8,4 +8,7 @@ QtObject {
     readonly property int addButtonWidth: 25
     readonly property int addButtonHeight: 25
     readonly property int addButtonOffset: 2
+
+    readonly property var sEXPANDED: "expanded"
+    readonly property var sCOLLAPSED: "collapsed"
 }

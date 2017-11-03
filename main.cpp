@@ -44,6 +44,10 @@ int main(int argc, char *argv[])
     }
 
     Model.f_LaneAdded(LaneID2, LaneID1);
+    {
+        int ColID1 = LocalIDGenerator::f_NextColumnID();
+        Model.f_ColumnAdded(LaneID2, ColID1, -1);
+    }
     Model.f_LaneAdded(LaneID3, LaneID2);
 
     QQuickView View;

@@ -1,6 +1,5 @@
 import QtQuick 2.0
-import QtQuick.Controls 2.2
-import QtQuick.Layouts 1.3
+import QtQuick.Controls 1.4
 import QtTest 1.1
 import "."
 
@@ -19,40 +18,44 @@ Rectangle {
 
         delegate: Lane {
             id: _Lane
-
             width: Style.cardWidth * _lanesList.visualWidth + Style.addButtonWidth
-            state: "expanded"
-            model: columnsModel
+            state: Style.sEXPANDED
+            model: proxyModel
             indexTitle: title
             modelIndex: index
-            mainModel: _main.mainModel
 
             states: [
                 State {
-                    name: "expanded"
-                    PropertyChanges { target: _Lane; height: columnsModel.visualHeight * Style.cardHeight + ((columnsModel.rowCount() > 0) + 1) * Style.nameOffset}
+                    name: Style.sEXPANDED
+                    PropertyChanges {
+                        target: _Lane;
+                        height: proxyModel.visualHeight * Style.cardHeight + ((proxyModel.rowCount() > 0) + 1) * Style.nameOffset
+                    }
                 },
                 State {
-                    name: "hidden"
-                    PropertyChanges { target: _Lane; height: Style.nameOffset}
+                    name: Style.sCOLLAPSED
+                    PropertyChanges {
+                        target: _Lane;
+                        height: Style.nameOffset
+                    }
                 }
             ]
 
 
             transitions: [
                 Transition {
-                    from: "*"; to: "expanded"
+                    from: "*"; to: Style.sEXPANDED
                     NumberAnimation { properties: "height"; easing.type: Easing.OutBounce; duration: 500 }
                 },
                 Transition {
-                    from: "*"; to: "hidden"
+                    from: "*"; to: Style.sCOLLAPSED
                     NumberAnimation { properties: "height"; easing.type: Easing.InOutQuad; duration: 500 }
                 }
             ]
 
             onExpandClicked: {
                 console.log(_Lane.state)
-                _Lane.state = _Lane.state === "expanded" ? "hidden" : "expanded"
+                _Lane.state = _Lane.state === Style.sEXPANDED ? Style.sCOLLAPSED : Style.sEXPANDED
                 console.log(_Lane.state)
             }
         }
@@ -62,7 +65,7 @@ Rectangle {
             height: Style.addButtonWidth
             width: Style.addButtonHeight
             onClicked: {
-                _main.mainModel.appendLane()
+                _main.mainModel.append()
             }
         }
     }
